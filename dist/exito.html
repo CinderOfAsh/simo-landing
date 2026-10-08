@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101012">
+  <title>SIMO · ¡Plaza confirmada!</title>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Caveat:wght@400;700&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="result-page">
+    <p class="eyebrow"><span class="stud" aria-hidden="true"></span> PAGO RECIBIDO</p>
+    <h1 class="display">¡Plaza<br><em>confirmada!</em></h1>
+    <p class="result-lead">Gracias por reservar. Te hemos enviado la confirmación con todos los detalles a tu email. Nos vemos en el taller · Casa de las Alajas · C/ Hileras 18, Madrid.</p>
+    <p class="result-note" id="detalle" hidden></p>
+    <div class="hero-actions">
+      <a class="btn btn-red" href="/">Volver al inicio</a>
+      <a class="btn btn-ghost" href="https://www.instagram.com/simo.bysimone/" target="_blank" rel="noopener">Ver Instagram</a>
+    </div>
+  </main>
+  <script>
+    const id = new URLSearchParams(location.search).get('sesion');
+    if (id) {
+      fetch('/api/confirmar?id=' + encodeURIComponent(id)).then(r => r.json()).then(d => {
+        if (d.fecha) {
+          const el = document.getElementById('detalle');
+          el.textContent = `Reserva: ${d.fecha} · ${d.personas} ${d.personas === 1 ? 'persona' : 'personas'}`;
+          el.hidden = false;
+        }
+      }).catch(() => {});
+    }
+  </script>
+</body>
+</html>
