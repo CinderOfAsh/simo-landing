@@ -7,7 +7,7 @@ export const ADMIN_PASSWORD = 'SIMO2026';
 export const CAPACITY = 8;
 export const WORKSHOP_DOWS = [5, 6];
 export const WORKSHOP_HOURS = '17:00–20:00';
-export const MIN_DATE = '2026-10-16';
+export const MIN_DATE = '2026-10-23';
 export const LUGAR = 'Casa de las Alajas · C/ Hileras 18, Madrid';
 
 const KEY = () => process.env.STRIPE_SECRET_KEY || '';

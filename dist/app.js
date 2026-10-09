@@ -4,7 +4,7 @@
 const PRICE_CENTS = 5499;          // 54,99 € por persona
 const CAPACITY = 8;                // plazas por fecha
 const WORKSHOP_DOWS = [5, 6];      // viernes(5) y sábados(6)
-const MIN_DATE = '2026-10-16';     // los talleres empiezan el 16 de octubre
+const MIN_DATE = '2026-10-23';     // los talleres empiezan el 23 de octubre
 const WORKSHOP_HOURS = '17:00–20:00';
 const CONTACTO = {
   instagram: 'https://www.instagram.com/simo.bysimone/',
