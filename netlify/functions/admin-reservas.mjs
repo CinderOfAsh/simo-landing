@@ -7,8 +7,8 @@ export default async (req) => {
     const pass = req.headers.get('x-admin-pass') || '';
     if (pass !== (process.env.ADMIN_PASSWORD || 'SIMO2026')) return json({ error: 'NO_AUTORIZADO' }, 401);
 
-    const r = await stripeGet(`payment_intents/search?query=${encodeURIComponent("metadata['fecha]:*' AND status:'succeeded'")}&limit=100`);
-    const data = (r.data || []).map(pi => {
+    const r = await stripeGet(`payment_intents/search?query=${encodeURIComponent("status:'succeeded'")}&limit=100`);
+    const data = (r.data || []).filter(pi => !!pi.metadata?.fecha).map(pi => {
       const created = new Date(pi.created * 1000);
       return {
         id: pi.id,
