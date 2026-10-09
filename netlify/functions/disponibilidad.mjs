@@ -7,8 +7,14 @@ export default async (req) => {
     const hasta = url.searchParams.get('hasta') || '';
     if (!process.env.STRIPE_SECRET_KEY) return json([]);
     const r = await stripeGet(`payment_intents/search?query=${encodeURIComponent("status:'succeeded'")}&limit=100`);
+    // Deduplicar: una reserva real = un PaymentIntent por sesión de Checkout.
+    // (Stripe a veces crea varios PI ligados a la misma checkout_session, ej. al reconfirmar)
+    const seen = new Set();
     const rows = {};
     for (const pi of r.data || []) {
+      const sessionId = pi.metadata?.session_id || pi.id;
+      if (seen.has(sessionId)) continue;
+      seen.add(sessionId);
       const f = pi.metadata?.fecha;
       if (!f) continue;
       if (desde && f < desde) continue;

@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101012">
+  <meta name="robots" content="noindex">
+  <title>Admin · Reservas SIMO</title>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Caveat:wght@400;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="header">
+    <a class="wordmark" href="/" aria-label="SIMO, inicio"><img src="assets/simo-logo.png" alt="SIMO"></a>
+    <nav class="nav" aria-label="Principal">
+      <a href="/#taller">El taller</a>
+      <a href="/#inspo">Inspo</a>
+    </nav>
+    <a class="btn btn-red header-cta" href="/#reservar">Reservar plaza</a>
+  </header>
+
+  <main class="legal">
+    <p class="eyebrow"><span class="stud" aria-hidden="true"></span> ADMIN</p>
+    <h1>Reservas pagadas</h1>
+
+    <form id="login" class="admin-login">
+      <label for="pass" class="eyebrow">Contraseña</label>
+      <input type="password" id="pass" name="pass" placeholder="Contraseña de admin" autocomplete="current-password" required>
+      <button type="submit" class="btn btn-red">Entrar</button>
+      <p id="login-err" class="admin-err" hidden></p>
+    </form>
+
+    <div id="panel" class="admin-panel" hidden>
+      <div class="admin-stats">
+        <div><b id="stat-total">0</b><span>Reservas</span></div>
+        <div><b id="stat-plazas">0</b><span>Plazas vendidas</span></div>
+        <div><b id="stat-ingresos">0 €</b><span>Ingresos brutos</span></div>
+      </div>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr><th>Fecha taller</th><th>Plazas</th><th>Nombre</th><th>Email</th><th>Importe</th><th>Pagado</th><th>ID sesión</th></tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+        <p id="empty" class="admin-empty" hidden>No hay reservas pagadas todavía.</p>
+      </div>
+      <p class="admin-foot">Fuente: Stripe (PaymentIntents con metadata.fecha). Los IDs sirven para reembolsar o buscar en el Dashboard.</p>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-bottom" style="border-top:0;margin-top:0">
+      <span>© <span id="year">2026</span> SIMO · Madrid</span>
+      <span class="footer-legal"><a href="aviso-legal.html">Aviso legal</a> · <a href="privacidad.html">Privacidad</a> · <a href="cookies.html">Cookies</a></span>
+    </div>
+  </footer>
+
+  <script>
+    const SESSION_KEY = 'simo-admin-pass';
+    const $ = s => document.querySelector(s);
+    const tbody = $('#rows');
+    const money = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' });
+    const fmtDate = new Intl.DateTimeFormat('es-ES', { dateStyle: 'short' });
+    const fmtTime = new Intl.DateTimeFormat('es-ES', { dateStyle: 'short', timeStyle: 'short' });
+    document.getElementById('year').textContent = String(new Date().getFullYear());
+
+    function paint(data) {
+      $('#stat-total').textContent = data.total;
+      $('#stat-plazas').textContent = data.plazas;
+      $('#stat-ingresos').textContent = money.format(data.ingresos);
+      tbody.replaceChildren();
+      if (!data.reservas.length) { $('#empty').hidden = false; return; }
+      $('#empty').hidden = true;
+      for (const r of data.reservas) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>${fmtDate.format(new Date(r.fecha + 'T12:00:00'))}</strong></td>
+          <td>${r.personas}</td>
+          <td>${r.nombre || '—'}</td>
+          <td><a href="mailto:${r.email}">${r.email}</a></td>
+          <td>${money.format(r.importe)}</td>
+          <td>${fmtTime.format(new Date(r.creado))}</td>
+          <td><code>${r.id}</code></td>
+        `;
+        tbody.append(tr);
+      }
+    }
+
+    async function load() {
+      const pass = sessionStorage.getItem(SESSION_KEY);
+      if (!pass) return;
+      try {
+        const r = await fetch('/api/admin/reservas', { headers: { 'x-admin-pass': pass } });
+        if (r.status === 401 || r.status === 403) { sessionStorage.removeItem(SESSION_KEY); return; }
+        if (!r.ok) throw new Error('Error ' + r.status);
+        const data = await r.json();
+        $('#login').hidden = true;
+        $('#panel').hidden = false;
+        paint(data);
+      } catch (e) {
+        $('#login-err').textContent = 'No se han podido cargar las reservas. Revisa la consola.';
+        $('#login-err').hidden = false;
+      }
+    }
+
+    $('#login').addEventListener('submit', e => {
+      e.preventDefault();
+      const pass = $('#pass').value;
+      sessionStorage.setItem(SESSION_KEY, pass);
+      load();
+    });
+
+    load();
+  </script>
+</body>
+</html>

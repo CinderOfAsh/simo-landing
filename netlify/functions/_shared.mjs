@@ -3,6 +3,7 @@
 import nodemailer from 'nodemailer';
 
 export const PRICE_CENTS = 5499;
+export const ADMIN_PASSWORD = 'SIMO2026';
 export const CAPACITY = 8;
 export const WORKSHOP_DOWS = [5, 6];
 export const WORKSHOP_HOURS = '17:00–20:00';
