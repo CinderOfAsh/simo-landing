@@ -7,20 +7,30 @@ export default async (req) => {
     const pass = req.headers.get('x-admin-pass') || '';
     if (pass !== (process.env.ADMIN_PASSWORD || 'SIMO2026')) return json({ error: 'NO_AUTORIZADO' }, 401);
 
-    const r = await stripeGet(`payment_intents/search?query=${encodeURIComponent("status:'succeeded'")}&limit=100`);
-    const data = (r.data || []).filter(pi => !!pi.metadata?.fecha).map(pi => {
-      const created = new Date(pi.created * 1000);
-      return {
-        id: pi.id,
-        fecha: pi.metadata?.fecha || '?',
-        personas: Number(pi.metadata?.personas || 0),
-        nombre: pi.metadata?.nombre || '',
-        email: pi.customer_email || pi.receipt_email || '',
-        importe: pi.amount / 100,
+    const r = await stripeGet(`charges?limit=100`);
+    const seen = new Set();
+    const data = [];
+    for (const ch of r.data || []) {
+      if (ch.status !== 'succeeded') continue;
+      if (ch.amount_refunded) continue;
+      const piId = typeof ch.payment_intent === 'string' ? ch.payment_intent : ch.payment_intent?.id;
+      if (!piId || seen.has(piId)) continue;
+      seen.add(piId);
+      let pi = {};
+      try { pi = await stripeGet(`payment_intents/${piId}`); } catch {}
+      if (!pi.metadata?.fecha) continue;
+      const created = new Date((pi.created || ch.created) * 1000);
+      data.push({
+        id: piId,
+        fecha: pi.metadata.fecha,
+        personas: Number(pi.metadata.personas || 0),
+        nombre: pi.metadata.nombre || '',
+        email: pi.customer_email || pi.receipt_email || ch.billing_details?.email || '',
+        importe: ch.amount / 100,
         creado: created.toISOString(),
         cuando: created.toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })
-      };
-    });
+      });
+    }
     data.sort((a, b) => (a.fecha + a.creado).localeCompare(b.fecha + b.creado));
     return json({
       total: data.length,

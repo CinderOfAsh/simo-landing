@@ -6,20 +6,26 @@ export default async (req) => {
     const desde = url.searchParams.get('desde') || '';
     const hasta = url.searchParams.get('hasta') || '';
     if (!process.env.STRIPE_SECRET_KEY) return json([]);
-    const r = await stripeGet(`payment_intents/search?query=${encodeURIComponent("status:'succeeded'")}&limit=100`);
-    // Deduplicar: una reserva real = un PaymentIntent por sesión de Checkout.
-    // (Stripe a veces crea varios PI ligados a la misma checkout_session, ej. al reconfirmar)
+
+    // En live, los cobros son Charges. Buscamos los del SIMO (54,99€ * personas)
+    // y extraemos la fecha del metadata del payment_intent asociado.
+    const r = await stripeGet(`charges?limit=100`);
     const seen = new Set();
     const rows = {};
-    for (const pi of r.data || []) {
-      const sessionId = pi.metadata?.session_id || pi.id;
-      if (seen.has(sessionId)) continue;
-      seen.add(sessionId);
-      const f = pi.metadata?.fecha;
-      if (!f) continue;
-      if (desde && f < desde) continue;
-      if (hasta && f > hasta) continue;
-      rows[f] = (rows[f] || 0) + Number(pi.metadata?.personas || 0);
+    for (const ch of r.data || []) {
+      if (ch.status !== 'succeeded') continue;
+      if (ch.amount_refunded) continue;       // ignorar devoluciones
+      const piId = typeof ch.payment_intent === 'string' ? ch.payment_intent : ch.payment_intent?.id;
+      if (!piId) continue;
+      if (seen.has(piId)) continue;
+      seen.add(piId);
+      // Traemos el PI para leer su metadata (fecha, personas, session_id)
+      const pi = await stripeGet(`payment_intents/${piId}`);
+      const fecha = pi.metadata?.fecha;
+      if (!fecha) continue;
+      if (desde && fecha < desde) continue;
+      if (hasta && fecha > hasta) continue;
+      rows[fecha] = (rows[fecha] || 0) + Number(pi.metadata?.personas || 0);
     }
     return json(Object.entries(rows).map(([fecha, reservadas]) => ({ fecha, reservadas })));
   } catch (e) {

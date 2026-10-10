@@ -55,12 +55,24 @@ export async function stripeGet(endpoint) {
   return data;
 }
 
-/* Plazas reservadas de una fecha = suma de PaymentIntents pagados con esa fecha */
+/* Plazas reservadas de una fecha = suma de los Charges exitosos de SIMO con esa fecha.
+   En live, los cobros son Charges, no PaymentIntents. */
 export async function plazasReservadas(fecha) {
-  const q = `metadata['fecha']:'${fecha}' AND status:'succeeded'`;
   try {
-    const r = await stripeGet(`payment_intents/search?query=${encodeURIComponent(q)}&limit=100`);
-    return (r.data || []).reduce((s, pi) => s + Number(pi.metadata?.personas || 0), 0);
+    const charges = await stripeGet(`charges?limit=100`);
+    const seen = new Set();
+    let total = 0;
+    for (const ch of charges.data || []) {
+      if (ch.status !== 'succeeded') continue;
+      if (ch.amount_refunded) continue;
+      const piId = typeof ch.payment_intent === 'string' ? ch.payment_intent : ch.payment_intent?.id;
+      if (!piId || seen.has(piId)) continue;
+      seen.add(piId);
+      const pi = await stripeGet(`payment_intents/${piId}`);
+      if (pi.metadata?.fecha !== fecha) continue;
+      total += Number(pi.metadata?.personas || 0);
+    }
+    return total;
   } catch (e) {
     console.error('Búsqueda de plazas falló:', e.message);
     return 0;
